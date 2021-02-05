@@ -142,4 +142,108 @@ plot.caption = element_text(face = "italic")) +
              alpha = 0.3)
 ```
 
+# Exercise 6 
+Repeat all the above exercises for a different european country
 
+
+```{r 6}
+
+
+country_code <- "FR"
+resp_ven <- GET(glue("https://app.ticketmaster.com/discovery/v2/venues?apikey={key}&locale=*&countryCode={country_code}"))
+con_ven <- fromJSON(content(resp_ven, as = "text"))
+
+ven_df <- con_ven$`_embedded`$venues
+
+# subset relevant columns
+ven_df <- subset(ven_df, select = c(name, city, postalCode, address, url, 
+                                    location))
+
+# transform to proper data.frame without nested dfs and rename long, lat
+ven_df <- do.call(data.frame, ven_df) 
+
+# condition for the case of adress containing two columns
+# number of columns with address
+num_add <- length(grep(x = colnames(ven_df), pattern = "^address"))
+# if there are multiple address columns only keep first
+if (num_add >= 2){
+ven_df <- ven_df %>% select(-address.line2) %>% rename("line1" = "address.line1")
+}
+
+ven_df <- ven_df %>% rename("longitude" = "location.longitude",
+                                                 "latitude" = "location.latitude",
+                                                 "city" = "name.1",
+                                                 "address" = "line1")
+# convert long, lat to numeric
+ven_df <-  ven_df %>%
+  mutate_at(c('longitude', 'latitude'), as.numeric)
+
+
+
+tot_pages <- con_ven$page$totalPages
+ven_df_all <- ven_df
+for (i in 2:tot_pages){
+  resp_ven_l <- GET(glue("https://app.ticketmaster.com/discovery/v2/venues?apikey={key}&locale=*&countryCode={country_code}&page={i}"))
+  con_ven_l <- fromJSON(content(resp_ven_l, as = "text"))
+  
+  ven_df_l <- con_ven_l$`_embedded`$venues
+  
+  #build in condition that skips loop if response does not contain all needed variables 
+  vars_want <- c("name", "city", "postalCode",
+                 "address", "url", "location")
+  
+  
+  if (sum(vars_want %in% names(ven_df_l)) == 6) { 
+  
+  print(glue("Page {i} contained all needed information."))
+  # subset relevant columns
+  ven_df_l <- subset(ven_df_l, select = c(name, city, postalCode, address, url, 
+                                      location))
+  # unnest dataframe
+  ven_df_l <- do.call(data.frame, ven_df_l)
+  
+  # condition for the case of adress containing two columns
+  # number of columns with address
+  num_add <- length(grep(x = colnames(ven_df_l), pattern = "^address"))
+  # if there are multiple address columns only keep first
+  if (num_add >= 2){
+  ven_df_l <- ven_df_l %>% select(-address.line2) %>% rename("line1" = "address.line1")
+  }
+   # transform to proper data.frame without nested dfs and rename long, lat
+  
+  ven_df_l  <- ven_df_l %>% rename("longitude" = "location.longitude",
+                                                   "latitude" = "location.latitude",
+                                                   "city" = "name.1",
+                                                 "address" = "line1")
+    
+  # convert long, lat to numeric
+  ven_df_l <-  ven_df_l %>%
+    mutate_at(c('longitude', 'latitude'), as.numeric)
+  
+  # append to entire df
+  ven_df_all <- rbind(ven_df_all, ven_df_l)
+  
+  } else {print(glue("Page {i} skipped because of missing data."))}
+  # go to sleep after each loop
+  #sleep_time <- 1
+  #print(glue("Going to sleep for {sleep_time} seconds."))
+  #Sys.sleep(sleep_time)
+
+}
+
+
+
+# plot the locations
+
+ven_df_all %>% drop_na(c(longitude, latitude)) %>%
+  filter(between(longitude, -4.8126346, 9.3538177),
+         between(latitude, 41.4834416, 51.08361111)) %>%
+ggplot() +
+geom_polygon(aes(x = long, y = lat, group = group), data = map_data("world", region = "France"), fill = "grey90",color = "black") +
+theme_void() + coord_quickmap() +
+labs(title = "Event locations across France", caption = "Source: ticketmaster.com") +
+theme(title = element_text(size=8, face='bold'),
+plot.caption = element_text(face = "italic")) +
+  geom_point(aes(x = longitude, y = latitude),
+             alpha = 0.3)
+```
