@@ -9,6 +9,7 @@ output: html_document
 library(httr)
 library(glue)
 library(jsonlite)
+library(rlist)
 source("key.R")
 ```
 
@@ -24,3 +25,12 @@ con_ven <- fromJSON(content(resp_ven, as = "text"))
 ```
 The resulting list contains three elements. The first contains the information of interest such as as the name and the location of the venues. The second element is the _links object and contains links to data sets. The last element is the page object. It contains information about the current page in the data source. 
 
+### Exercise 1.2
+Extract the name, the city, the postalCode and address, as well as the url and the longitude and
+latitude of the venues to a data frame.
+
+```{r 12}
+ven_df <- con_ven$`_embedded`$venues
+ven_df <- subset(ven_df, select = c(name, city, postalCode, address, url, 
+                                    location))
+```
