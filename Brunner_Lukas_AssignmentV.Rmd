@@ -125,3 +125,21 @@ glimpse(ven_df_all)
 ```
 
 
+# Exercise 3
+Add points to the map indicating the locations of the event venues across Germany.
+
+```{r 3}
+ven_df_all %>% drop_na(c(longitude, latitude)) %>%
+  filter(between(longitude, 5.866944, 15.043611),
+         between(latitude, 47.271679, 55.0846)) %>%
+ggplot() +
+geom_polygon(aes(x = long, y = lat, group = group), data = map_data("world", region = "Germany"), fill = "grey90",color = "black") +
+theme_void() + coord_quickmap() +
+labs(title = "Event locations across Germany", caption = "Source: ticketmaster.com") +
+theme(title = element_text(size=8, face='bold'),
+plot.caption = element_text(face = "italic")) +
+  geom_point(aes(x = longitude, y = latitude),
+             alpha = 0.3)
+```
+
+
