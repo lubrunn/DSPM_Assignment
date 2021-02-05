@@ -7,25 +7,20 @@ output: html_document
 
 ```{r setup, include=FALSE}
 library(httr)
-
+library(glue)
+library(jsonlite)
+source("key.R")
 ```
 
-## R Markdown
+# Exercise 1
+### Exercise 1.1
+Perform a first GET request, that searches for event venues in Germany (countryCode = "DE"). Extract
+the content from the response object and inspect the resulting list. Describe what you can see.
 
-This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
+```{r 1}
 
-When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
-
-```{r cars}
-summary(cars)
+resp_ven <- GET(glue("https://app.ticketmaster.com/discovery/v2/venues?apikey={key}&locale=*&countryCode=DE"))
+con_ven <- fromJSON(content(resp_ven, as = "text"))
 ```
+The resulting list contains three elements. The first contains the information of interest such as as the name and the location of the venues. The second element is the _links object and contains links to data sets. The last element is the page object. It contains information about the current page in the data source. 
 
-## Including Plots
-
-You can also embed plots, for example:
-
-```{r pressure, echo=FALSE}
-plot(pressure)
-```
-
-Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
