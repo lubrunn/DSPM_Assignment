@@ -10,6 +10,7 @@ library(httr)
 library(glue)
 library(jsonlite)
 library(rlist)
+library(tidyverse)
 source("key.R")
 ```
 
@@ -31,6 +32,17 @@ latitude of the venues to a data frame.
 
 ```{r 12}
 ven_df <- con_ven$`_embedded`$venues
+
+# subset relevant columns
 ven_df <- subset(ven_df, select = c(name, city, postalCode, address, url, 
                                     location))
+
+# transform to proper data.frame without nested dfs and rename long, lat
+ven_df <- do.call(data.frame, ven_df) %>% rename("longitude" = "location.longitude",
+                                                 "latitude" = "location.latitude")
+# convert long, lat to numeric
+ven_df <-  ven_df %>%
+  mutate_at(c('longitude', 'latitude'), as.numeric)
+
+glimpse(ven_df)
 ```
