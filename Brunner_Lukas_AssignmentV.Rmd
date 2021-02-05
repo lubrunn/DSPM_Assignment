@@ -39,10 +39,89 @@ ven_df <- subset(ven_df, select = c(name, city, postalCode, address, url,
 
 # transform to proper data.frame without nested dfs and rename long, lat
 ven_df <- do.call(data.frame, ven_df) %>% rename("longitude" = "location.longitude",
-                                                 "latitude" = "location.latitude")
+                                                 "latitude" = "location.latitude",
+                                                 "city" = "name.1",
+                                                 "address" = "line1")
 # convert long, lat to numeric
 ven_df <-  ven_df %>%
   mutate_at(c('longitude', 'latitude'), as.numeric)
 
 glimpse(ven_df)
 ```
+
+
+# Exercise 2
+Have a closer look at the list element named page. Did your GET request from exercise 3 return all
+event locations in Germany? Obviously not - there are of course much more venues in Germany than
+those contained in this list. Your GET request only yielded the first results page containing the first 20
+out of several thousands of venues. \\
+Check the API documentation under the section Venue Search. How can you request the venues from
+the remaining results pages?  \\
+Write a for loop that iterates through the results pages and performs a GET request for all venues
+in Germany. After each iteration, extract the seven variables name, city, postalCode, address, url,
+longitude, and latitude. Join the information in one large data frame.
+
+
+
+
+
+```{r 22}
+
+tot_pages <- con_ven$page$totalPages
+ven_df_all <- ven_df
+for (i in 2:tot_pages){
+  resp_ven_l <- GET(glue("https://app.ticketmaster.com/discovery/v2/venues?apikey={key}&locale=*&countryCode=DE&page={i}"))
+  con_ven_l <- fromJSON(content(resp_ven_l, as = "text"))
+  
+  ven_df_l <- con_ven_l$`_embedded`$venues
+  
+  #build in condition that skips loop if response does not contain all needed variables 
+  vars_want <- c("name", "city", "postalCode",
+                 "address", "url", "location")
+  
+  
+  if (sum(vars_want %in% names(ven_df_l)) == 6) { 
+  
+  print(glue("Page {i} contained all needed information."))
+  # subset relevant columns
+  ven_df_l <- subset(ven_df_l, select = c(name, city, postalCode, address, url, 
+                                      location))
+  # unnest dataframe
+  ven_df_l <- do.call(data.frame, ven_df_l)
+  
+  # condition for the case of adress containing two columns
+  # number of columns with address
+  num_add <- length(grep(x = colnames(ven_df_l), pattern = "^address"))
+  # if there are multiple address columns only keep first
+  if (num_add >= 2){
+  ven_df_l <- ven_df_l %>% select(-address.line2) %>% rename("line1" = "address.line1")
+  }
+   # transform to proper data.frame without nested dfs and rename long, lat
+  
+  ven_df_l  <- ven_df_l %>% rename("longitude" = "location.longitude",
+                                                   "latitude" = "location.latitude",
+                                                   "city" = "name.1",
+                                                 "address" = "line1")
+    
+  # convert long, lat to numeric
+  ven_df_l <-  ven_df_l %>%
+    mutate_at(c('longitude', 'latitude'), as.numeric)
+  
+  # append to entire df
+  ven_df_all <- rbind(ven_df_all, ven_df_l)
+  
+  } else {print(glue("Page {i} skipped because of missing data."))}
+  # go to sleep after each loop
+  #sleep_time <- 1
+  #print(glue("Going to sleep for {sleep_time} seconds."))
+  #Sys.sleep(sleep_time)
+
+}
+
+
+
+
+glimpse(ven_df_all)
+```
+
+
