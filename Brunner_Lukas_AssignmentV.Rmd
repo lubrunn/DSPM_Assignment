@@ -14,6 +14,8 @@ library(tidyverse)
 source("key.R")
 ```
 
+GitHub-Repo : https://github.com/lubrunn/DSPM_Assignment
+
 # Exercise 1
 ### Exercise 1.1
 Perform a first GET request, that searches for event venues in Germany (countryCode = "DE"). Extract
@@ -24,7 +26,7 @@ the content from the response object and inspect the resulting list. Describe wh
 resp_ven <- GET(glue("https://app.ticketmaster.com/discovery/v2/venues?apikey={key}&locale=*&countryCode=DE"))
 con_ven <- fromJSON(content(resp_ven, as = "text"))
 ```
-The resulting list contains three elements. The first contains the information of interest such as as the name and the location of the venues. The second element is the _links object and contains links to data sets. The last element is the page object. It contains information about the current page in the data source. 
+The resulting list contains three elements. The first, _embedded, contains the information of interest such as as the name and the location of the venues. The second element is the _links object and contains links to data sets. The last element is the page object. It contains information about the current page in the data source. 
 
 ### Exercise 1.2
 Extract the name, the city, the postalCode and address, as well as the url and the longitude and
@@ -65,24 +67,40 @@ longitude, and latitude. Join the information in one large data frame.
 
 
 
-```{r 22}
+```{r 22, warning= FALSE, message=FALSE}
 
-tot_pages <- con_ven$page$totalPages
+tot_pages <- con_ven$page$totalPages - 1
 ven_df_all <- ven_df
-for (i in 2:tot_pages){
+for (i in 1:tot_pages){
   resp_ven_l <- GET(glue("https://app.ticketmaster.com/discovery/v2/venues?apikey={key}&locale=*&countryCode=DE&page={i}"))
   con_ven_l <- fromJSON(content(resp_ven_l, as = "text"))
   
   ven_df_l <- con_ven_l$`_embedded`$venues
   
+  # sometimes get spike arrest violation, if this happens skip to next loop
+  if (!is.null(ven_df_l)){
+  
   #build in condition that skips loop if response does not contain all needed variables 
   vars_want <- c("name", "city", "postalCode",
                  "address", "url", "location")
   
+  # find missing columns
+  vars_missing <- setdiff(vars_want, names(ven_df_l))
   
-  if (sum(vars_want %in% names(ven_df_l)) == 6) { 
+  # insert missing column with NAs
+  for (missing_col in vars_missing){
+    if (missing_col == "location"){
+      ven_df_l[[missing_col]] <- data.frame("longitude" = replicate(nrow(ven_df_l), NA),
+                                          "latitude" = replicate(nrow(ven_df_l),NA))
+    } else if (missing_col == "address") {
+      ven_df_l[[missing_col]] <- data.frame("line1" = replicate(nrow(ven_df_l), NA))
+    } else {ven_df_l[[missing_col]] <- NA}
+    
+  }
   
-  print(glue("Page {i} contained all needed information."))
+  #if (sum(vars_want %in% names(ven_df_l)) == 6) { 
+  
+  #print(glue("Page {i} contained all needed information."))
   # subset relevant columns
   ven_df_l <- subset(ven_df_l, select = c(name, city, postalCode, address, url, 
                                       location))
@@ -96,6 +114,8 @@ for (i in 2:tot_pages){
   if (num_add >= 2){
   ven_df_l <- ven_df_l %>% select(-address.line2) %>% rename("line1" = "address.line1")
   }
+  
+  
    # transform to proper data.frame without nested dfs and rename long, lat
   
   ven_df_l  <- ven_df_l %>% rename("longitude" = "location.longitude",
@@ -109,12 +129,12 @@ for (i in 2:tot_pages){
   
   # append to entire df
   ven_df_all <- rbind(ven_df_all, ven_df_l)
-  
-  } else {print(glue("Page {i} skipped because of missing data."))}
+  }
+  #} #else {print(glue("Page {i} skipped because of missing data."))}
   # go to sleep after each loop
-  #sleep_time <- 1
+  sleep_time <- 0.5
   #print(glue("Going to sleep for {sleep_time} seconds."))
-  #Sys.sleep(sleep_time)
+  Sys.sleep(sleep_time)
 
 }
 
@@ -142,11 +162,11 @@ plot.caption = element_text(face = "italic")) +
              alpha = 0.3)
 ```
 
-# Exercise 6 
+# Exercise 4 
 Repeat all the above exercises for a different european country
 
 
-```{r 6}
+```{r 4, warning= FALSE, message=FALSE}
 
 
 country_code <- "FR"
@@ -179,23 +199,41 @@ ven_df <-  ven_df %>%
   mutate_at(c('longitude', 'latitude'), as.numeric)
 
 
-
-tot_pages <- con_ven$page$totalPages
+#####################################
+####### for all pages ###############
+#####################################
+tot_pages <- con_ven$page$totalPages - 1
 ven_df_all <- ven_df
-for (i in 2:tot_pages){
+for (i in 1:tot_pages){
   resp_ven_l <- GET(glue("https://app.ticketmaster.com/discovery/v2/venues?apikey={key}&locale=*&countryCode={country_code}&page={i}"))
   con_ven_l <- fromJSON(content(resp_ven_l, as = "text"))
   
   ven_df_l <- con_ven_l$`_embedded`$venues
   
+  # sometimes get spike arrest violation, if this happens skip to next loop
+  if (!is.null(ven_df_l)){
+  
   #build in condition that skips loop if response does not contain all needed variables 
   vars_want <- c("name", "city", "postalCode",
                  "address", "url", "location")
   
+  # find missing columns
+  vars_missing <- setdiff(vars_want, names(ven_df_l))
   
-  if (sum(vars_want %in% names(ven_df_l)) == 6) { 
+  # insert missing column with NAs
+  for (missing_col in vars_missing){
+    if (missing_col == "location"){
+      ven_df_l[[missing_col]] <- data.frame("longitude" = replicate(nrow(ven_df_l), NA),
+                                          "latitude" = replicate(nrow(ven_df_l),NA))
+    } else if (missing_col == "address") {
+      ven_df_l[[missing_col]] <- data.frame("line1" = replicate(nrow(ven_df_l), NA))
+    } else {ven_df_l[[missing_col]] <- NA}
+    
+  }
   
-  print(glue("Page {i} contained all needed information."))
+  #if (sum(vars_want %in% names(ven_df_l)) == 6) { 
+  
+  #print(glue("Page {i} contained all needed information."))
   # subset relevant columns
   ven_df_l <- subset(ven_df_l, select = c(name, city, postalCode, address, url, 
                                       location))
@@ -209,6 +247,8 @@ for (i in 2:tot_pages){
   if (num_add >= 2){
   ven_df_l <- ven_df_l %>% select(-address.line2) %>% rename("line1" = "address.line1")
   }
+  
+  
    # transform to proper data.frame without nested dfs and rename long, lat
   
   ven_df_l  <- ven_df_l %>% rename("longitude" = "location.longitude",
@@ -222,12 +262,12 @@ for (i in 2:tot_pages){
   
   # append to entire df
   ven_df_all <- rbind(ven_df_all, ven_df_l)
-  
-  } else {print(glue("Page {i} skipped because of missing data."))}
+  }
+  #} #else {print(glue("Page {i} skipped because of missing data."))}
   # go to sleep after each loop
-  #sleep_time <- 1
+  sleep_time <- 0.5
   #print(glue("Going to sleep for {sleep_time} seconds."))
-  #Sys.sleep(sleep_time)
+  Sys.sleep(sleep_time)
 
 }
 
